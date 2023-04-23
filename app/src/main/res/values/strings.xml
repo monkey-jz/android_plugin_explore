@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">android_plugin_explore</string>
+    <string name="load_plugin">加载插件</string>
+    <string name="launch_plugin">执行插件代码</string>
+</resources>
