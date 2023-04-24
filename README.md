@@ -228,11 +228,11 @@ public class ProxyInstrumentation extends Instrumentation {
     
    系统内置: 
    
-     BootClassLoader:加载一些系统Framework层级需要的类.
+   BootClassLoader:加载一些系统Framework层级需要的类.
      
-     PathClassLoader:加载系统类和已经安装的应用程序的类,如果是加载非系统应用程序类,则会加载data/app/目录下的dex文件以及包含dex的apk文件或jar文件.
+   PathClassLoader:加载系统类和已经安装的应用程序的类,如果是加载非系统应用程序类,则会加载data/app/目录下的dex文件以及包含dex的apk文件或jar文件.
      
-     DexClassLoader:可加载外部路径包含dex的apk文件或jar文件,支持从SD卡加载.
+   DexClassLoader:可加载外部路径包含dex的apk文件或jar文件,支持从SD卡加载.
      
    自定义:继承系统的ClassLoader
    
@@ -269,7 +269,7 @@ public class ProxyInstrumentation extends Instrumentation {
             return c;
     }
     
-    一个类被加载时首先会检查类是否被加载过,如果没有被加载过,就调用父类的加载器加载,如果父类加载器为空就调用启动加载器加载,如果父类加载失败,就调用自己的findClass加载.相关类的构造方法和findClass方法:
+ 一个类被加载时首先会检查类是否被加载过,如果没有被加载过,就调用父类的加载器加载,如果父类加载器为空就调用启动加载器加载,如果父类加载失败,就调用自己的findClass加载.相关类的构造方法和findClass方法:
     
  ```    
      //BaseDexClassLoader的构造方法
