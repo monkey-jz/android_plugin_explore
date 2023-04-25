@@ -2,7 +2,7 @@ apply plugin : 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
-        applicationId "com.boyaa.android_plugin_explore"
+        applicationId "com.jz.pluginexplore"
         minSdkVersion 19
         targetSdkVersion 27
         versionCode 1
