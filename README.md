@@ -134,7 +134,7 @@ public class ProxyInstrumentation extends Instrumentation {
         }
     }
     
-    public class ProxyHandlerCallback implements Handler.Callback {
+  public class ProxyHandlerCallback implements Handler.Callback {
     //系统Handler对象用来执行Handler对象的handleMessage方法,这个可以根据Callback中handleMessage的返回值来确定是否传递
     //根据上面的代码如果这里的handleMessage返回true,Handler自身的handleMessage方法就不会被调用,如果返回false会继续调用Handler自身的handleMessage.
     private Handler mHandler;
@@ -176,8 +176,8 @@ public class ProxyInstrumentation extends Instrumentation {
   ```
   上面我们编写的是hook相关类和方法后加入的自定义的代码逻辑. 接下来就是将系统中有关类的对象替换为这些类的对象:
 ```      
-      //hook Instrumentation
-      public static void hookInstrumentation(Activity activity) {
+    //hook Instrumentation
+    public static void hookInstrumentation(Activity activity) {
         try {
             Log.e(Constant.TAG,"hookInstrumentation ==================" );
             Field instrumentationFiled = Activity.class.getDeclaredField("mInstrumentation");
@@ -243,7 +243,7 @@ public class ProxyInstrumentation extends Instrumentation {
    ClassLoader是一个抽象类,是所有classloader的最终父类,ClassLoader中重要的方法是loadClass(String name),其他的子类都继承了此方法且没有进行复写.
      
      
-         protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException{
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException{
              // 首先检查类是否被加载过
             Class<?> c = findLoadedClass(name);
             if (c == null) {
@@ -344,7 +344,8 @@ public class ProxyInstrumentation extends Instrumentation {
         //DexClassLoader可以用于加载外部apk,jar等
         DexClassLoader pluginDexClassLoader = new DexClassLoader(pluginPath, dexOptPath, null, hostClassLoader);
 
-    /*    //加载插件中的一个类测试是否加载成功,注意由于在demo中我们用的是默认类加载器即宿主apk的类加载器加载的插件中的类,这里只是用插件的类加载器测试而             已,在实际demo调用插件功能中需要注释这段测试代码,否则会因同一个dex由不同的classloader加载而崩溃.
+    /*    //加载插件中的一个类测试是否加载成功,注意由于在demo中我们用的是默认类加载器即宿主apk的类加载器加载的插件中的类,
+            这里只是用插件的类加载器测试而已,在实际demo调用插件功能中需要注释这段测试代码,否则会因同一个dex由不同的classloader加载而崩溃.
         try {
             Class<?> pluginTestClass = pluginDexClassLoader.loadClass("com.jz.plugin.PluginTestClass");
             Log.e(Constant.TAG,"pluginTestClass ==========" +pluginTestClass.getName());
