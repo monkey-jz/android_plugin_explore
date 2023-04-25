@@ -166,10 +166,10 @@ public class ProxyInstrumentation extends Instrumentation {
                 e.printStackTrace();
             }
         }
-        //原逻辑是继续执行handleMessage,因此最后还需要交给系统handler来执行.
-        mHandler.handleMessage(message);
+        //原逻辑是继续执行handleMessage,因此最后还需要交给系统handler来执行.如果最后返回了false就不用调用此方法了系统会自己执行,如果返回了true就需要调用.
+        //mHandler.handleMessage(message);
         Log.e(Constant.TAG,"ProxyHandlerCallback 结束 ==========");
-        return true;
+        return false;
     }
 }
 
@@ -315,7 +315,7 @@ public class ProxyInstrumentation extends Instrumentation {
     }
     
     
-   public Class<?> findClass(String name, List<Throwable> suppressed) {      //注释1
+   public Class<?> findClass(String name, List<Throwable> suppressed) {
         for (Element element : dexElements) {
             //最终通过element对象加载类
             Class<?> clazz = element.findClass(name, definingContext, suppressed);
@@ -331,11 +331,220 @@ public class ProxyInstrumentation extends Instrumentation {
     }
 
    ```
-     
+   由上述代码可知类的加载最终由dexElements中的Element加载的,每个dex对应一个Element.我们要在宿主apk中启动插件apk中的类所以我们需要把插件中的dex合并到
+   宿主的dexElements数组中:
+   ```
+    public static void loadClass(Context context,ClassLoader hostClassLoader,String apkPath) {
+        Log.e(Constant.TAG,"开始拷贝插件apk到app沙盒内 ==========");
+        //把下载后的插件apk拷贝到app沙盒路径内
+        String pluginPath = copy2AppBox(context, apkPath);
+        Log.e(Constant.TAG,"拷贝完成 ==========");
+        String dexOptPath = context.getDir("dexopt", 0).getAbsolutePath();
 
+        //DexClassLoader可以用于加载外部apk,jar等
+        DexClassLoader pluginDexClassLoader = new DexClassLoader(pluginPath, dexOptPath, null, hostClassLoader);
+
+    /*    //加载插件中的一个类测试是否加载成功,注意由于在demo中我们用的是默认类加载器即宿主apk的类加载器加载的插件中的类,这里只是用插件的类加载器测试而             已,在实际demo调用插件功能中需要注释这段测试代码,否则会因同一个dex由不同的classloader加载而崩溃.
+        try {
+            Class<?> pluginTestClass = pluginDexClassLoader.loadClass("com.jz.plugin.PluginTestClass");
+            Log.e(Constant.TAG,"pluginTestClass ==========" +pluginTestClass.getName());
+            try {
+                Object instance = pluginTestClass.newInstance();
+                Method sum = pluginTestClass.getMethod("sum", int.class, int.class);
+                int result = (int)sum.invoke(instance, 10, 20);
+                Log.e(Constant.TAG,"host result: " + result);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }*/
+
+        /*
+         * 合并插件和宿主的DexPathList的dexElements字段并设置到宿主的dexElements字段中
+         * 由于加载好的dex最终存储在BaseDexClassLoader的dexPathList对象的dexElements字段中,
+         * dexElements是个数组,所以这里需要将插件中的dexElements与宿主apk中dexElements进行合并
+         * */
+        Log.e(Constant.TAG,"hostClassLoader ==========" + hostClassLoader);
+        Log.e(Constant.TAG,"开始合并插件和宿主的DexPathList的dexElements ==========");
+        try {
+            Field dexPathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
+            dexPathListField.setAccessible(true);
+
+            //获取插件中的dexElements
+            Object pluginDexPathList= dexPathListField.get(pluginDexClassLoader);
+            Field pluginDexElementsFiled = pluginDexPathList.getClass().getDeclaredField("dexElements");
+            pluginDexElementsFiled.setAccessible(true);
+            Object[] pluginDexElements = (Object[]) pluginDexElementsFiled.get(pluginDexPathList);
+
+            //获取宿主中的dexElements
+            Field dexPathListField1 = BaseDexClassLoader.class.getDeclaredField("pathList");
+            dexPathListField1.setAccessible(true);
+            Object hostDexPathList = dexPathListField1.get(hostClassLoader);
+            Field hostDexElementsField = hostDexPathList.getClass().getDeclaredField("dexElements");
+            hostDexElementsField.setAccessible(true);
+            Object[] hostDexElements = (Object[]) hostDexElementsField.get(hostDexPathList);
+
+            //合并插件和宿主的dexElements
+            Object[] newDexElements = (Object[]) Array.newInstance(hostDexElements.getClass().getComponentType(),
+                    pluginDexElements.length + hostDexElements.length);
+            System.arraycopy(pluginDexElements, 0, newDexElements, 0, pluginDexElements.length);
+            System.arraycopy(hostDexElements, 0, newDexElements, pluginDexElements.length, hostDexElements.length);
+
+            //合并后的dexElements字段设置到宿主的dexElements字段中
+            hostDexElementsField.set(hostDexPathList,newDexElements);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        Log.e(Constant.TAG,"合并完成 ==========");
+    }
+
+    private static String copy2AppBox(Context context, String pluginApkPath) {
+
+        String des = context.getFilesDir().getAbsolutePath() + File.separator + "plugin.apk";
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        try {
+            inputStream = new FileInputStream(new File(pluginApkPath));
+            outputStream = new BufferedOutputStream(new FileOutputStream(des));
+            byte[] temp = new byte[1024];
+            int len;
+            while ((len = (inputStream.read(temp))) != -1) {
+                outputStream.write(temp, 0, len);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+                if (outputStream != null) {
+                    outputStream.flush();
+                    outputStream.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+        return des;
+    }
+   ```
 
 
 三.插件资源的加载
 
+  构建一个插件的Resources对象,需要新构建一个AssetManager并调用addAssetPath将apk路径传递进去:
+
+```
+    public static void loadResource(Context context,String apkPath) {
+        try {
+            Log.e(Constant.TAG,"加载插件资源 ==========");
+            sPluginAssetManager = AssetManager.class.getConstructor().newInstance();
+            Method addAssetPath = AssetManager.class.getDeclaredMethod("addAssetPath", String.class);
+            addAssetPath.setAccessible(true);
+            addAssetPath.invoke(sPluginAssetManager,apkPath);
+            sPluginResources = new Resources(sPluginAssetManager, context.getResources().getDisplayMetrics(), context.getResources().getConfiguration());
+            Log.e(Constant.TAG,"资源加载完成 ==========");
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+    }
+```
+
+我们还需要在自定义的Application中根据加载的插件名称返回对应插件中的Resources和AssetManager对象
+
+```
+public class HostApplication extends Application {
+    //用于区分多个插件此demo只使用了一个插件
+    private String pluginName = "";
+
+    @Override
+    public AssetManager getAssets() {
+        Log.e(Constant.TAG,"pluginA getAssets pluginName ========== " + pluginName);
+        if (pluginName.equals("pluginA")){
+            return PluginLoader.sPluginAssetManager != null ? PluginLoader.sPluginAssetManager :super.getAssets();
+        }
+        return super.getAssets();
+    }
+
+    @Override
+    public Resources getResources() {
+        Log.e(Constant.TAG,"pluginA getResources pluginName ==========" + pluginName);
+        if (pluginName.equals("pluginA")){
+            return PluginLoader.sPluginResources != null ? PluginLoader.sPluginResources : super.getResources();
+        }
+        return super.getResources();
+    }
+}
+
+//在插件activity中冲洗
+public class PluginActivity extends Activity {
+    private static final String TAG = "PluginActivity";
+    private static final String PLUGIN_NAME = "pluginA";
+    
+    ...
+
+    /*插件Activity的相关资源对象需要返回在宿主application中加载的对应的插件资源对象*/
+    @Override
+    public Resources getResources() {
+        //设置插件名称,以便宿主自定义的application的getResources()可以根据插件名获取对应的插件资源对象
+        setPluginName();
+        return getApplication() != null && getApplication().getResources() != null ?  getApplication().getResources() :  super.getResources();
+    }
+
+    @Override
+    public AssetManager getAssets() {
+        return getApplication() != null && getApplication().getAssets() != null ?  getApplication().getAssets() :  super.getAssets();
+    }
+
+    private void setPluginName() {
+        Application application = getApplication();
+        //必要判断,因为getResources()会调用多次而第一次调用application为null.
+        if (application != null) {
+            Class<? extends Application> aClass = application.getClass();
+            Field mPluginNameField = null;
+            try {
+                mPluginNameField= aClass.getDeclaredField("pluginName");
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            }
+            mPluginNameField.setAccessible(true);
+            try {
+                mPluginNameField.set(application,PLUGIN_NAME);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+```
+
+
+
 四.demo演示启动插件中的Activity
+
+```
+   Intent intent = new Intent();
+   intent.setComponent(new ComponentName("com.jz.plugin","com.jz.plugin.PluginActivity"));
+   startActivity(intent);
+```
+
 
