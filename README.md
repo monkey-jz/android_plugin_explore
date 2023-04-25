@@ -223,6 +223,7 @@ public class ProxyInstrumentation extends Instrumentation {
     }
  ``` 
   至此绕过ams对activity校验的过程就完成了.
+  
 二.插件类的加载
    1.要启动插件中的类需要首先要把插件中的类加载进内存,Android中的ClassLoader类型分为两种类型:
     
