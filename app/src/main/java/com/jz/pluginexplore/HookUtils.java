@@ -30,9 +30,9 @@ public class HookUtils {
 
     }
 
-    public static void hookHandler() {
+    public static void hookHandlerCallback() {
         try {
-            Log.e(Constant.TAG,"hookHandler ==================" );
+            Log.e(Constant.TAG,"hookHandlerCallback ==================" );
             Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
             Method currentActivityThreadMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
             //获取当前环境ActivityThread对象
@@ -46,7 +46,7 @@ public class HookUtils {
             mCallbackField.setAccessible(true);
             //设置mH对象的mCallback成员为自定义的ProxyHandlerCallback
             mCallbackField.set(mH,new ProxyHandlerCallback(mH));
-            Log.e(Constant.TAG,"hookHandler 结束 ==================" );
+            Log.e(Constant.TAG,"hookHandlerCallback 结束 ==================" );
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {

@@ -22,12 +22,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        HookUtils.hookHandler();
+        HookUtils.hookHandlerCallback();
         HookUtils.hookInstrumentation(MainActivity.this);
 
         requestPermission();
         initView();
-
     }
 
     private void requestPermission() {
@@ -67,8 +66,6 @@ public class MainActivity extends Activity {
         findViewById(R.id.jump2_plugin).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-
                 Intent intent = new Intent();
                 intent.setComponent(new ComponentName("com.jz.plugin","com.jz.plugin.PluginActivity"));
                 startActivity(intent);
@@ -76,4 +73,5 @@ public class MainActivity extends Activity {
         });
 
     }
+
 }

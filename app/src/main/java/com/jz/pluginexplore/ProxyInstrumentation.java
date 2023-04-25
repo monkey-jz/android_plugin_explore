@@ -34,9 +34,9 @@ public class ProxyInstrumentation extends Instrumentation {
                 .append("intent = [").append(intent).append("], ")
                 .append("requestCode = [").append(requestCode).append("], ")
                 .append("options = [").append(options).append("]");
-        Intent replaceIntent = new Intent(target, StubActivity.class);
-        replaceIntent.putExtra(Constant.TARGET_COMPONENT,intent);
-        intent = replaceIntent;
+        Intent StubIntent = new Intent(target, StubActivity.class);
+        StubIntent.putExtra(Constant.TARGET_COMPONENT,intent);
+        intent = StubIntent;
         try {
             Log.e(Constant.TAG, "Hook instrumentation,开始执行executeStartActivity,参数: " + sb);
             Method execStartActivity = Instrumentation.class.getDeclaredMethod("execStartActivity",
